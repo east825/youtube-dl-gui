@@ -5,6 +5,8 @@
         <file alias="MD-resume">icons/MD-resume.png</file>
         <file alias="MD-stop">icons/MD-stop.png</file>
         <file alias="download">icons/download.png</file>
+        <file alias="settings">icons/settings.png</file>
         <file alias="document-new">icons/document-new.png</file>
+        <file alias="youtube">icons/youtube.png</file>
     </qresource>
 </RCC>
