@@ -1,0 +1,10 @@
+<!DOCTYPE RCC>
+<RCC version="1.0">
+    <qresource>
+        <file alias="MD-play">icons/MD-play.png</file>
+        <file alias="MD-resume">icons/MD-resume.png</file>
+        <file alias="MD-stop">icons/MD-stop.png</file>
+        <file alias="download">icons/download.png</file>
+        <file alias="document-new">icons/document-new.png</file>
+    </qresource>
+</RCC>
