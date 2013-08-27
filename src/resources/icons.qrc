@@ -1,12 +1,32 @@
 <!DOCTYPE RCC>
 <RCC version="1.0">
-    <qresource>
-        <file alias="MD-play">icons/MD-play.png</file>
-        <file alias="MD-resume">icons/MD-resume.png</file>
-        <file alias="MD-stop">icons/MD-stop.png</file>
-        <file alias="download">icons/download.png</file>
-        <file alias="settings">icons/settings.png</file>
-        <file alias="document-new">icons/document-new.png</file>
-        <file alias="youtube">icons/youtube.png</file>
-    </qresource>
+  <qresource>
+    <file alias="document-new">icons\document-new.png</file>
+    <file alias="download">icons\download.png</file>
+    <file alias="MD-eject">icons\MD-eject.png</file>
+    <file alias="MD-fast-backward-alt">icons\MD-fast-backward-alt.png</file>
+    <file alias="MD-fast-backward">icons\MD-fast-backward.png</file>
+    <file alias="MD-fast-forward-alt">icons\MD-fast-forward-alt.png</file>
+    <file alias="MD-fast-forward">icons\MD-fast-forward.png</file>
+    <file alias="MD-next">icons\MD-next.png</file>
+    <file alias="MD-pause">icons\MD-pause.png</file>
+    <file alias="MD-play">icons\MD-play.png</file>
+    <file alias="MD-previous">icons\MD-previous.png</file>
+    <file alias="MD-record">icons\MD-record.png</file>
+    <file alias="MD-resume">icons\MD-resume.png</file>
+    <file alias="MD-sound">icons\MD-sound.png</file>
+    <file alias="MD-stop">icons\MD-stop.png</file>
+    <file alias="MD-time-pos-back">icons\MD-time-pos-back.png</file>
+    <file alias="MD-time-pos-forward">icons\MD-time-pos-forward.png</file>
+    <file alias="MD-time-pos-set">icons\MD-time-pos-set.png</file>
+    <file alias="MD-time-position">icons\MD-time-position.png</file>
+    <file alias="MD-volume-0-alt">icons\MD-volume-0-alt.png</file>
+    <file alias="MD-volume-1">icons\MD-volume-1.png</file>
+    <file alias="MD-volume-2">icons\MD-volume-2.png</file>
+    <file alias="MD-volume-3">icons\MD-volume-3.png</file>
+    <file alias="MD-volume-down">icons\MD-volume-down.png</file>
+    <file alias="MD-volume-up">icons\MD-volume-up.png</file>
+    <file alias="settings">icons\settings.png</file>
+    <file alias="youtube">icons\youtube.png</file>
+  </qresource>
 </RCC>
