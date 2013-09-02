@@ -15,7 +15,7 @@ import argparse
 from PyQt4.QtGui import *
 from PyQt4.phonon import Phonon
 
-from player import VideoPlayer
+from player import VideoPlayer, PHONON_STATES
 from dialogs import StringListDialog
 from util import show_stub_message_box, show_about_dialog
 from youtube.dialogs import DownloadDialog
@@ -107,7 +107,7 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage('Time: {:s}/{:s}'.format(time, total))
 
     def update_title(self, new_state):
-        logging.debug('New state: %s', new_state)
+        logging.debug('Player new state: %s', PHONON_STATES[new_state])
         if new_state == Phonon.PlayingState:
             self.setWindowTitle('"{}" - Playing'.format(self.player.path))
         elif new_state == Phonon.PausedState:
@@ -116,10 +116,7 @@ class MainWindow(QMainWindow):
 
     def download_video(self):
         d = DownloadDialog(self)
-        def play(path):
-            if path:
-                self.player.play(path)
-        d.downloaded.connect(play)
+        d.downloaded.connect(lambda x: self.player.play(x))
         d.exec_()
         LOG.debug('Exiting download_video()')
 

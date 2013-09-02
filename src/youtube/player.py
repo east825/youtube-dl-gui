@@ -13,6 +13,14 @@ from PyQt4.phonon import Phonon
 
 LOG = logging.getLogger('youtube.player')
 
+PHONON_STATES = {
+    Phonon.LoadingState: 'LodingsState',
+    Phonon.StoppedState: 'StoppedState',
+    Phonon.PlayingState: 'PlayeringState',
+    Phonon.BufferingState: 'BufferingState',
+    Phonon.PausedState: 'PausedState',
+    Phonon.ErrorState: 'ErrorState'
+}
 
 class VideoPlayer(QWidget):
     state_changed = pyqtSignal('Phonon::State', name='state_changed')
