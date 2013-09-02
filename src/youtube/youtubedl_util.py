@@ -15,9 +15,9 @@ import logging
 
 LOG = logging.getLogger('youtube.youtubedl_util')
 
-VALID_URL_REGEX = re.compile(r'^(https?://)(www\.)?youtube\.com/watch\?v=\w+', re.I)
+VALID_URL_RE = re.compile(r'^(https?://)(www\.)?youtube\.com/watch\?v=\w+', re.I)
 
-FORMAT_LINE_REGEX = re.compile(
+FORMAT_LINE_RE = re.compile(
     r'(?P<id>\d+)'              # unique id (itag)
     r'\s+:\s+'
     r'(?P<extension>\w+)'       # video extension
@@ -26,7 +26,7 @@ FORMAT_LINE_REGEX = re.compile(
     re.IGNORECASE
 )
 
-PROGRESS_LINE_REGEX = re.compile(
+PROGRESS_LINE_RE = re.compile(
     r'\[download\]\s+'
     r'(?P<percent>\d+\.\d+)%\s+'
     r'of (?P<size>\S+)\s+'
@@ -35,9 +35,10 @@ PROGRESS_LINE_REGEX = re.compile(
     re.IGNORECASE
 )
 
-DESTINATION_LINE_REGEX = re.compile('\[download]\]\s+Destination: (?P<path>.*)')
-ALREADY_DOWNLOADED_LINE_REGEX = re.compile(
+DESTINATION_LINE_RE = re.compile('\[download]\]\s+Destination: (?P<path>.*)')
+ALREADY_DOWNLOADED_LINE_RE = re.compile(
     '\[download\]\s+(?P<path>.*)\s+has already been downloaded')
+ERROR_LINE_RE = re.compile(r'ERROR:\s+(?P<message>.*)')
 
 VideoFormat = namedtuple('VideoFormat', ['id', 'extension', 'quality'])
 
@@ -48,7 +49,7 @@ class YouTubeDLError(Exception):
 
 def _check_valid_url(url):
     # TODO: more meaningful check for list param
-    if not VALID_URL_REGEX.match(url) or 'list=' in url:
+    if not VALID_URL_RE.match(url) or 'list=' in url:
         raise ValueError('Not a valid YouTube video URL: {}'.format(url))
 
 
@@ -57,8 +58,8 @@ def _extract_error(lines):
         lines = lines.splitlines()
     for line in lines:
         if line.startswith('ERROR:'):
-            _, errmsg = line.split(maxsplit=1)
-            return errmsg
+            _, errmsg = line.split(':', maxsplit=1)
+            return errmsg.lstrip()
 
 
 def check_available():
@@ -80,7 +81,7 @@ def video_formats(url):
     formats = []
     for line in map(str.strip, output.splitlines()):
         LOG.debug(line)
-        m = FORMAT_LINE_REGEX.match(line)
+        m = FORMAT_LINE_RE.match(line)
         if m:
             formats.append(VideoFormat(**m.groupdict()))
     LOG.debug(pformat(formats))
@@ -117,11 +118,13 @@ class DownloadManager(object):
                 # can't use 'for line in p.stdout', because
                 # it returns all lines at ones and waits the
                 # process to terminate first
-                line = p.stdout.readline().strip()
-                LOG.debug(line)
+                line = p.stdout.readline()
                 if not line:
+                    LOG.debug("No more lines in process' stdout ")
                     break
-                m = PROGRESS_LINE_REGEX.match(line)
+                line = line.rstrip()
+                LOG.debug(line)
+                m = PROGRESS_LINE_RE.match(line)
                 if m:
                     info = [float(m.group('percent'))]
                     if size:
@@ -135,17 +138,20 @@ class DownloadManager(object):
                         else:
                             info.append(timedelta(hours=int(hours), minutes=int(minutes)))
                     yield info[0] if len(info) == 1 else tuple(info)
-                m = ALREADY_DOWNLOADED_LINE_REGEX.match(line)
+                m = ALREADY_DOWNLOADED_LINE_RE.match(line)
                 if m:
                     LOG.debug('File already downloaded')
                     self.already_downloaded = True
                     self.path = os.path.join(os.getcwd(), m.group('path').strip())
-                m = DESTINATION_LINE_REGEX.match(line)
+                m = DESTINATION_LINE_RE.match(line)
                 if m:
                     LOG.debug('Destination extracted')
                     self.path = os.path.join(os.getcwd(), m.group('path').strip())
-                elif line.startswith('ERROR:'):
-                    raise YouTubeDLError(_extract_error(line))
+                m = ERROR_LINE_RE.match(line)
+                if m:
+                    message = m.group('message')
+                    LOG.error('Error found: %s', message)
+                    raise YouTubeDLError(message)
 
         p = sp.Popen(*self.__args, **self.__kwargs)
         self.process = p

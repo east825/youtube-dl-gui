@@ -4,13 +4,13 @@ from __future__ import unicode_literals
 from __future__ import print_function
 
 import logging
-import threading
-from PyQt4.QtCore import QRegExp, pyqtSignal
 
+from PyQt4.QtCore import *
 from PyQt4.QtGui import *
-from youtube.youtubedl_util import YouTubeDLError, download, VALID_URL_REGEX
 
 from youtubedl_util import video_formats
+from youtubedl_util import YouTubeDLError, download, VALID_URL_RE
+from itertools import imap
 
 LOG = logging.getLogger('youtube.dialogs')
 
@@ -30,6 +30,8 @@ class StringListDialog(QDialog):
 
 class DownloadDialog(QDialog):
     downloaded = pyqtSignal(unicode, name='downloaded')
+    # TODO: function local signals?
+    progress_updated = pyqtSignal(int, name='progress_updated')
 
     def __init__(self, parent=None):
         QDialog.__init__(self, parent)
@@ -39,7 +41,7 @@ class DownloadDialog(QDialog):
 
         url_label = QLabel('&URL:')
         self.url_edit = QLineEdit()
-        self.url_edit.setValidator(QRegExpValidator(QRegExp(VALID_URL_REGEX.pattern)))
+        self.url_edit.setValidator(QRegExpValidator(QRegExp(VALID_URL_RE.pattern)))
         url_label.setBuddy(self.url_edit)
         grid.addWidget(url_label, 0, 0)
         grid.addWidget(self.url_edit, 0, 1)
@@ -59,15 +61,18 @@ class DownloadDialog(QDialog):
         vbox.addWidget(buttons)
         self.setLayout(vbox)
 
-        self.url_edit.textEdited.connect(self.show_formats)
+        self.url_edit.textEdited.connect(self._show_formats)
 
         self.__formats = []
+        self.__progress = None
+
+        self.progress_updated.connect(self._update_progress)
 
     @property
     def url(self):
-        return  unicode(self.url_edit.text()).strip()
+        return unicode(self.url_edit.text()).strip()
 
-    def show_formats(self, text):
+    def _show_formats(self, text):
         LOG.debug('Entering show_formats()')
         if not self.url:
             return
@@ -79,6 +84,11 @@ class DownloadDialog(QDialog):
         except YouTubeDLError as e:
             QMessageBox.warning(self, 'youtube-dl error', e.message)
 
+    def _update_progress(self, n):
+        if self.__progress is None:
+            LOG.error("update_progress() was called when progress doesn't exist")
+            return
+        self.__progress.setValue(n)
 
     def accept(self):
         LOG.debug('Entering accept()')
@@ -88,27 +98,40 @@ class DownloadDialog(QDialog):
         fmt = self.__formats[idx]
         mgr = download(self.url, fmt)
         progress = QProgressDialog('Downloading...', 'Stop', 0, 100, self)
-        progress.canceled.connect(lambda: mgr.terminate())
+        def on_canceled():
+            mgr.terminate()
+            thread.wait()
+
+        progress.canceled.connect(on_canceled)
         progress.show()
+        self.__progress = progress
 
         dlg = self
-        class ProgressThread(threading.Thread):
-            def __init__(self):
-                super(ProgressThread, self).__init__()
 
+        class ProgressThread(QThread):
             def run(self):
-                for i in mgr.progress():
-                    LOG.debug('%d%%', int(i))
-                    progress.setValue(int(i))
-                progress.close()
-                if mgr.path:
-                    QApplication.processEvents()
-                    dlg.downloaded.emit(mgr.path)
+                try:
+                    for i in imap(int, mgr.progress()):
+                        LOG.debug('%d%%', i)
+                        dlg.progress_updated.emit(i)
+                except YouTubeDLError as e:
+                    QMessageBox.warning(dlg, 'youtube-dl error', e.message)
+                finally:
+                    LOG.debug('Closing progress dialog')
+                    progress.canceled.emit()
 
         thread = ProgressThread()
+
+        def on_finished():
+            if mgr.path:
+                self.downloaded.emit(mgr.path)
+            # dispose resources
+            thread.deleteLater()
+        thread.finished.connect(on_finished)
+
+        # thread will run in background managing non-modal progress dialog
         thread.start()
         super(DownloadDialog, self).accept()
-
 
 
 
