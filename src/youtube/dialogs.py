@@ -3,6 +3,7 @@
 from __future__ import unicode_literals
 from __future__ import print_function
 
+import sys
 import logging
 
 from PyQt4.QtCore import *
@@ -41,18 +42,23 @@ class DownloadDialog(QDialog):
 
         url_label = QLabel('&URL:')
         self.url_edit = QLineEdit()
+        self.url_edit.setFocus()
+        self.url_edit.setMinimumWidth(300)
+        self.url_edit.setPlaceholderText('Enter YouTube URL here')
         self.url_edit.setValidator(QRegExpValidator(QRegExp(VALID_URL_RE.pattern)))
         url_label.setBuddy(self.url_edit)
         grid.addWidget(url_label, 0, 0)
         grid.addWidget(self.url_edit, 0, 1)
 
-        fmt_label = QLabel('Available &Formats:')
-        self.fmt_combo = QComboBox()
-        fmt_label.setBuddy(self.fmt_combo)
-        grid.addWidget(fmt_label, 1, 0)
-        grid.addWidget(self.fmt_combo, 1, 1)
+        self.format_label = QLabel('&Formats:')
+        self.format_combo = QComboBox()
+
+        self.format_label.setBuddy(self.format_combo)
+        grid.addWidget(self.format_label, 1, 0)
+        grid.addWidget(self.format_combo, 1, 1)
 
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        self.ok_button = buttons.button(QDialogButtonBox.Ok)
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
 
@@ -60,6 +66,8 @@ class DownloadDialog(QDialog):
         vbox.addLayout(grid)
         vbox.addWidget(buttons)
         self.setLayout(vbox)
+
+        self.hide_components(True)
 
         self.url_edit.textEdited.connect(self._show_formats)
 
@@ -72,17 +80,27 @@ class DownloadDialog(QDialog):
     def url(self):
         return unicode(self.url_edit.text()).strip()
 
+    def hide_components(self, hide):
+        self.format_label.setHidden(hide)
+        self.format_combo.setHidden(hide)
+        self.ok_button.setEnabled(not hide)
+
     def _show_formats(self, text):
         LOG.debug('Entering show_formats()')
+        self.url_edit.setStyleSheet('background: none')
         if not self.url:
+            self.hide_components(True)
             return
-        self.fmt_combo.clear()
         try:
             self.__formats = video_formats(self.url)
+            self.format_combo.clear()
             for fmt in self.__formats:
-                self.fmt_combo.addItem('{}: {}'.format(fmt.extension, fmt.quality))
+                self.format_combo.addItem('{}: {}'.format(fmt.extension, fmt.quality))
+            self.hide_components(False)
         except YouTubeDLError as e:
-            QMessageBox.warning(self, 'youtube-dl error', e.message)
+            QMessageBox.warning(self, 'youtube-dl error', 'Error')
+            self.url_edit.setStyleSheet('background: #E76666')
+            self.hide_components(True)
 
     def _update_progress(self, n):
         if self.__progress is None:
@@ -92,7 +110,7 @@ class DownloadDialog(QDialog):
 
     def accept(self):
         LOG.debug('Entering accept()')
-        idx = self.fmt_combo.currentIndex()
+        idx = self.format_combo.currentIndex()
         if idx == -1:
             return
         fmt = self.__formats[idx]

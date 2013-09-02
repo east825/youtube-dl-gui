@@ -35,16 +35,14 @@ PROGRESS_LINE_RE = re.compile(
     re.IGNORECASE
 )
 
-DESTINATION_LINE_RE = re.compile('\[download]\]\s+Destination: (?P<path>.*)')
-ALREADY_DOWNLOADED_LINE_RE = re.compile(
-    '\[download\]\s+(?P<path>.*)\s+has already been downloaded')
+DESTINATION_LINE_RE = re.compile(r'\[download\]\s+Destination: (?P<path>.*)')
+ALREADY_DOWNLOADED_LINE_RE = re.compile(r'\[download\]\s+(?P<path>.*)\s+has already been downloaded')
 ERROR_LINE_RE = re.compile(r'ERROR:\s+(?P<message>.*)')
 
 VideoFormat = namedtuple('VideoFormat', ['id', 'extension', 'quality'])
 
 
-class YouTubeDLError(Exception):
-    pass
+class YouTubeDLError(Exception): pass
 
 
 def _check_valid_url(url):
@@ -76,8 +74,8 @@ def video_formats(url):
     _check_valid_url(url)
     try:
         output = sp.check_output(['youtube-dl', '-F', url])
-    except sp.CalledProcessError:
-        raise YouTubeDLError(_extract_error(output))
+    except sp.CalledProcessError as e:
+        raise Exception(_extract_error(e.output))
     formats = []
     for line in map(str.strip, output.splitlines()):
         LOG.debug(line)
@@ -124,20 +122,6 @@ class DownloadManager(object):
                     break
                 line = line.rstrip()
                 LOG.debug(line)
-                m = PROGRESS_LINE_RE.match(line)
-                if m:
-                    info = [float(m.group('percent'))]
-                    if size:
-                        info.append(m.group('size'))
-                    if speed:
-                        info.append(m.group('speed'))
-                    if eta:
-                        hours, minutes = m.group('eta').split(':')
-                        if not hours.isdigit() or not minutes.isdigit():
-                            info.append(None)
-                        else:
-                            info.append(timedelta(hours=int(hours), minutes=int(minutes)))
-                    yield info[0] if len(info) == 1 else tuple(info)
                 m = ALREADY_DOWNLOADED_LINE_RE.match(line)
                 if m:
                     LOG.debug('File already downloaded')
@@ -152,6 +136,20 @@ class DownloadManager(object):
                     message = m.group('message')
                     LOG.error('Error found: %s', message)
                     raise YouTubeDLError(message)
+                m = PROGRESS_LINE_RE.match(line)
+                if m:
+                    info = [float(m.group('percent'))]
+                    if size:
+                        info.append(m.group('size'))
+                    if speed:
+                        info.append(m.group('speed'))
+                    if eta:
+                        hours, minutes = m.group('eta').split(':')
+                        if not hours.isdigit() or not minutes.isdigit():
+                            info.append(None)
+                        else:
+                            info.append(timedelta(hours=int(hours), minutes=int(minutes)))
+                    yield info[0] if len(info) == 1 else tuple(info)
 
         p = sp.Popen(*self.__args, **self.__kwargs)
         self.process = p
