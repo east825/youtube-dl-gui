@@ -3,10 +3,16 @@
 import platform
 
 from PyQt4.QtGui import QMessageBox
-from PyQt4.QtCore import PYQT_VERSION_STR
+from PyQt4.QtCore import PYQT_VERSION_STR, QStringList
 from PyQt4.QtCore import QT_VERSION_STR
 
 u = unicode
+
+def py2q_list(xs):
+    return list(xs)
+
+def q2py_list(xs):
+    return map(unicode, xs)
 
 ABOUT_MSG = """\
 <html>
@@ -24,4 +30,3 @@ def show_stub_message_box(parent):
 
 def show_about_dialog(parent):
     QMessageBox.about(parent, 'About', ABOUT_MSG)
-

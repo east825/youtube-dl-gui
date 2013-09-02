@@ -7,100 +7,32 @@ Program main entry point.
 
 from __future__ import unicode_literals
 from __future__ import print_function
-import mimetypes
 
 import sys
 import logging
-import os
 import argparse
-import resources.icons
-from datetime import time
-from datetime import timedelta
-
-from dialogs import StringListDialog
-from util import show_stub_message_box, show_about_dialog
 
 from PyQt4.QtGui import *
-from PyQt4.QtCore import *
 from PyQt4.phonon import Phonon
+
+from player import VideoPlayer
+from dialogs import StringListDialog
+from util import show_stub_message_box, show_about_dialog
+from youtube.dialogs import DownloadDialog
+
+# noinspection PyUnresolvedReferences
+import resources.icons
+
 
 __version__ = (0, 1)
 
-logging.basicConfig(level=logging.DEBUG, format='%(message)s')
-# LOG = logging.getLogger('viewer')
-# LOG.setLevel(logging.DEBUG)
-# LOG.propagate = False
-# LOG.addHandler(logging.StreamHandler())
+logging.basicConfig(level=logging.DEBUG, format='%(levelname)s:%(name)s: %(message)s')
+LOG = logging.getLogger('youtube.launcher')
+LOG.setLevel(logging.DEBUG)
+LOG.propagate = False
+LOG.addHandler(logging.StreamHandler())
 
 # noinspection PyArgumentList
-class VideoPlayer(QWidget):
-    state_changed = pyqtSignal('Phonon::State', name='state_changed')
-    time_changed = pyqtSignal(timedelta, timedelta, name='time_changed')
-
-    def __init__(self, QWidget_parent=None):
-        # super(QWidget, self).__init__(QWidget_parent, Qt_WindowFlags_flags)
-        QWidget.__init__(self, QWidget_parent, )
-        self.player = Phonon.VideoPlayer(self)
-        # self.player.mediaObject().stateChanged.connect(self.update_status)
-        self.player.mediaObject().stateChanged.connect(self.state_changed)
-        self.player.mediaObject().tick.connect(self.update_time)
-        # one tick per second
-        self.player.mediaObject().setTickInterval(1000)
-
-
-        vbox = QVBoxLayout()
-        vbox.addWidget(self.player, 1)
-        vbox.addWidget(Phonon.SeekSlider(self.player.mediaObject(), self))
-
-        hbox = QHBoxLayout()
-        hbox.addWidget(QPushButton(icon=QIcon(':MD-resume'), clicked=self.on_resume))
-        hbox.addWidget(QPushButton(icon=QIcon(':MD-stop'), clicked=self.on_stop))
-        hbox.addStretch()
-        hbox.addWidget(Phonon.VolumeSlider(self.player.audioOutput(), self))
-
-        vbox.addLayout(hbox)
-        self.setLayout(vbox)
-
-        self.file_path = None
-
-    def on_resume(self):
-        logging.debug('Play button clicked')
-        if self.player.isPlaying():
-            self.player.pause()
-        else:
-            self.player.play()
-
-    def on_stop(self):
-        logging.debug('Stop button clicked')
-        self.player.stop()
-
-    def play_file(self, filename):
-        self.player.play(Phonon.MediaSource(self.file_path))
-        self.file_path = os.path.abspath(filename)
-
-    def supported_formats(self):
-        mtypes = Phonon.BackendCapabilities.availableMimeTypes()
-        mtypes = map(unicode, mtypes)
-        logging.debug('Mime types available: %s', mtypes)
-        extensions = []
-        for mtype in mtypes:
-            if mtype.startswith('video'):
-                extensions.extend(mimetypes.guess_all_extensions(mtype))
-        logging.debug('Video files extensions: %s', extensions)
-        return extensions
-
-    def file_dir(self):
-        if self.file_path is not None:
-            return os.path.basename(self.file_path)
-        return os.curdir
-
-    def update_time(self, msec):
-        current = timedelta(seconds=(msec / 1000))
-        total_time = self.player.mediaObject().totalTime()
-        total = timedelta(seconds=(total_time / 1000))
-        logging.debug('Time is %s/%s (%d ms)', current, total, msec)
-        self.time_changed.emit(current, total)
-
 
 class MainWindow(QMainWindow):
     def __init__(self, path):
@@ -117,7 +49,7 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(self.player)
 
         new_file_action = QAction(QIcon(':document-new'), '&New', self)
-        new_file_action.setToolTip('Open existing video file')
+        new_file_action.setToolTip('Open existing file')
         new_file_action.setShortcut(QKeySequence.New)
         new_file_action.triggered.connect(self.open_new_file)
 
@@ -134,6 +66,7 @@ class MainWindow(QMainWindow):
         show_formats_action.triggered.connect(self.show_formats)
 
         main_toolbar = self.addToolBar('MainToolbar')
+        main_toolbar.addAction(download_video_action)
         main_toolbar.addAction(new_file_action)
         main_toolbar.addSeparator()
         main_toolbar.addAction(show_setting_action)
@@ -151,7 +84,7 @@ class MainWindow(QMainWindow):
         about_action.triggered.connect(self.show_about)
 
         if path is not None:
-            self.player.play_file(path)
+            self.player.play(path)
 
     def open_new_file(self):
         globs = ['*' + e for e in self.player.supported_formats()]
@@ -160,7 +93,7 @@ class MainWindow(QMainWindow):
                                                    'Video files ({})'.format(' '.join(globs))))
         if path:
             logging.debug('File chosen: "%s"', path)
-            self.player.play_file(path)
+            self.player.play(path)
 
     def show_formats(self):
         # QMessageBox.
@@ -176,13 +109,19 @@ class MainWindow(QMainWindow):
     def update_title(self, new_state):
         logging.debug('New state: %s', new_state)
         if new_state == Phonon.PlayingState:
-            self.setWindowTitle('"{}" - Playing'.format(self.player.file_path))
+            self.setWindowTitle('"{}" - Playing'.format(self.player.path))
         elif new_state == Phonon.PausedState:
-            self.setWindowTitle('"{}" - Paused'.format(self.player.file_path))
+            self.setWindowTitle('"{}" - Paused'.format(self.player.path))
 
 
     def download_video(self):
-        show_stub_message_box(self)
+        d = DownloadDialog(self)
+        def play(path):
+            if path:
+                self.player.play(path)
+        d.downloaded.connect(play)
+        d.exec_()
+        LOG.debug('Exiting download_video()')
 
     def show_settings(self):
         show_stub_message_box(self)
