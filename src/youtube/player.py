@@ -29,7 +29,7 @@ class VideoPlayer(QWidget):
     def __init__(self, QWidget_parent=None):
         # super(QWidget, self).__init__(QWidget_parent, Qt_WindowFlags_flags)
         QWidget.__init__(self, QWidget_parent, )
-        self.player = Phonon.VideoPlayer(self)
+        self.player = Phonon.VideoPlayer()
         # self.player.mediaObject().stateChanged.connect(self.update_status)
         self.player.mediaObject().stateChanged.connect(self.state_changed)
         self.player.mediaObject().tick.connect(self.update_time)
@@ -42,8 +42,10 @@ class VideoPlayer(QWidget):
         vbox.addWidget(Phonon.SeekSlider(self.player.mediaObject(), self))
 
         hbox = QHBoxLayout()
+        hbox.addWidget(QPushButton(icon=QIcon(':MD-fast-backward'), clicked=self.on_backward))
         hbox.addWidget(QPushButton(icon=QIcon(':MD-resume'), clicked=self.on_resume))
         hbox.addWidget(QPushButton(icon=QIcon(':MD-stop'), clicked=self.on_stop))
+        hbox.addWidget(QPushButton(icon=QIcon(':MD-fast-forward'), clicked=self.on_forward))
         hbox.addStretch()
         hbox.addWidget(Phonon.VolumeSlider(self.player.audioOutput(), self))
 
@@ -62,6 +64,15 @@ class VideoPlayer(QWidget):
     def on_stop(self):
         LOG.debug('Stop button clicked')
         self.player.stop()
+
+    def on_backward(self):
+        cur = self.player.currentTime()
+        self.player.seek(cur - min(cur, 5000))
+
+    def on_forward(self):
+        cur = self.player.currentTime()
+        total = self.player.totalTime()
+        self.player.seek(cur + min(total - cur, 5000))
 
     def play(self, path):
         self.path = os.path.abspath(path)
