@@ -11,11 +11,11 @@ import re
 import subprocess as sp
 from collections import namedtuple
 import logging
+from urllib import urlencode
+from urlparse import parse_qs, urlunparse, urljoin, urlunsplit, urlsplit
 
 
 LOG = logging.getLogger('youtube.youtubedl_util')
-
-VALID_URL_RE = re.compile(r'^(https?://)(www\.)?youtube\.com/watch\?v=\w+', re.I)
 
 FORMAT_LINE_RE = re.compile(
     r'(?P<id>\d+)'              # unique id (itag)
@@ -45,10 +45,16 @@ VideoFormat = namedtuple('VideoFormat', ['id', 'extension', 'quality'])
 class YouTubeDLError(Exception): pass
 
 
-def _check_valid_url(url):
-    # TODO: more meaningful check for list param
-    if not VALID_URL_RE.match(url) or 'list=' in url:
+def prepare_url(url):
+    scheme, netloc, path, query, _ = urlsplit(url)
+    qs_params = parse_qs(query, keep_blank_values=False)
+    if not netloc.endswith('youtube.com') or 'v' not in qs_params:
         raise ValueError('Not a valid YouTube video URL: {}'.format(url))
+    video_id = qs_params['v'][0]
+    # filter out fragment and all params except video id ('v')
+    sanitized = urlunsplit((scheme, netloc, path, urlencode({'v': video_id}), ''))
+    LOG.debug('Prepared URL: %s', sanitized)
+    return sanitized
 
 
 def _extract_error(lines):
@@ -71,7 +77,7 @@ def check_available():
 
 def video_formats(url):
     LOG.debug('Entering video_formats()')
-    _check_valid_url(url)
+    url = prepare_url(url)
     try:
         output = sp.check_output(['youtube-dl', '-F', url])
     except sp.CalledProcessError as e:
@@ -157,7 +163,7 @@ class DownloadManager(object):
 
 
 def download(url, fmt=None):
-    _check_valid_url(url)
+    url = prepare_url(url)
     args = ['youtube-dl', '--newline']
     if fmt is not None:
         if isinstance(fmt, VideoFormat):

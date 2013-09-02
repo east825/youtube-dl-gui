@@ -10,8 +10,10 @@ from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 
 from youtubedl_util import video_formats
-from youtubedl_util import YouTubeDLError, download, VALID_URL_RE
+from youtubedl_util import YouTubeDLError, download
 from itertools import imap
+
+VALID_URL_RE = r'^(https?://)?(www\.)?youtube\.com/watch\?v=\w+.*$'
 
 LOG = logging.getLogger('youtube.dialogs')
 
@@ -45,7 +47,7 @@ class DownloadDialog(QDialog):
         self.url_edit.setFocus()
         self.url_edit.setMinimumWidth(300)
         self.url_edit.setPlaceholderText('Enter YouTube URL here')
-        self.url_edit.setValidator(QRegExpValidator(QRegExp(VALID_URL_RE.pattern)))
+        self.url_edit.setValidator(QRegExpValidator(QRegExp(VALID_URL_RE)))
         url_label.setBuddy(self.url_edit)
         grid.addWidget(url_label, 0, 0)
         grid.addWidget(self.url_edit, 0, 1)
@@ -97,8 +99,9 @@ class DownloadDialog(QDialog):
             for fmt in self.__formats:
                 self.format_combo.addItem('{}: {}'.format(fmt.extension, fmt.quality))
             self.hide_components(False)
-        except YouTubeDLError as e:
-            QMessageBox.warning(self, 'youtube-dl error', 'Error')
+        except (YouTubeDLError, ValueError) as e:
+            if isinstance(e, YouTubeDLError):
+                QMessageBox.warning(self, 'youtube-dl error', 'Error')
             self.url_edit.setStyleSheet('background: #E76666')
             self.hide_components(True)
 
