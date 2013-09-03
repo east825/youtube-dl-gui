@@ -7,6 +7,7 @@ import os
 
 from pprint import pformat
 import sys
+import platform
 import re
 import subprocess as sp
 from collections import namedtuple
@@ -14,6 +15,7 @@ import logging
 from urllib import urlencode
 from urlparse import parse_qs, urlunparse, urljoin, urlunsplit, urlsplit
 
+CONSOLE_ENCODING = 'cp1251' if platform.system() == 'Windows' else sys.stdout.encoding
 
 LOG = logging.getLogger('youtube.youtubedl_util')
 
@@ -126,17 +128,19 @@ class DownloadManager(object):
                 if not line:
                     LOG.debug("No more lines in process' stdout ")
                     break
-                line = line.rstrip()
+                line = line.rstrip().decode(CONSOLE_ENCODING)
                 LOG.debug(line)
                 m = ALREADY_DOWNLOADED_LINE_RE.match(line)
                 if m:
-                    LOG.debug('File already downloaded')
+                    dest = m.group('path').strip()
+                    LOG.debug('File already downloaded. Destination: %s', dest)
                     self.already_downloaded = True
-                    self.path = os.path.join(os.getcwd(), m.group('path').strip())
+                    self.path = os.path.join(os.getcwd(), dest)
                 m = DESTINATION_LINE_RE.match(line)
                 if m:
-                    LOG.debug('Destination extracted')
-                    self.path = os.path.join(os.getcwd(), m.group('path').strip())
+                    dest = m.group('path').strip()
+                    LOG.debug('Destination extracted: %s', dest)
+                    self.path = os.path.join(os.getcwd(), dest)
                 m = ERROR_LINE_RE.match(line)
                 if m:
                     message = m.group('message')

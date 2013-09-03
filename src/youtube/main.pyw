@@ -116,7 +116,7 @@ class MainWindow(QMainWindow):
 
     def download_video(self):
         d = DownloadDialog(self)
-        d.downloaded.connect(lambda x: self.player.play(x))
+        d.downloaded.connect(self.player.play)
         d.exec_()
         LOG.debug('Exiting download_video()')
 

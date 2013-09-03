@@ -75,8 +75,9 @@ class VideoPlayer(QWidget):
         self.player.seek(cur + min(total - cur, 5000))
 
     def play(self, path):
-        self.path = os.path.abspath(path)
-        self.player.play(Phonon.MediaSource(self.path))
+        LOG.debug('Path to video file: %s', path)
+        self.player.play(Phonon.MediaSource(path))
+        self.path = unicode(path)
 
     def supported_formats(self):
         mtypes = Phonon.BackendCapabilities.availableMimeTypes()

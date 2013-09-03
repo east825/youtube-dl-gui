@@ -3,7 +3,6 @@
 from __future__ import unicode_literals
 from __future__ import print_function
 
-import sys
 import logging
 
 from PyQt4.QtCore import *
@@ -11,7 +10,6 @@ from PyQt4.QtGui import *
 
 from youtubedl_util import video_formats
 from youtubedl_util import YouTubeDLError, download
-from itertools import imap
 
 VALID_URL_RE = r'^(https?://)?(www\.)?youtube\.com/watch\?v=\w+.*$'
 
@@ -32,9 +30,7 @@ class StringListDialog(QDialog):
 
 
 class DownloadDialog(QDialog):
-    downloaded = pyqtSignal(unicode, name='downloaded')
-    # TODO: function local signals?
-    progress_updated = pyqtSignal(int, name='progress_updated')
+    downloaded = pyqtSignal(unicode)
 
     def __init__(self, parent=None):
         QDialog.__init__(self, parent)
@@ -48,13 +44,13 @@ class DownloadDialog(QDialog):
         self.url_edit.setMinimumWidth(300)
         self.url_edit.setPlaceholderText('Enter YouTube URL here')
         self.url_edit.setValidator(QRegExpValidator(QRegExp(VALID_URL_RE)))
+        self.url_edit.textEdited.connect(self.show_formats)
         url_label.setBuddy(self.url_edit)
         grid.addWidget(url_label, 0, 0)
         grid.addWidget(self.url_edit, 0, 1)
 
         self.format_label = QLabel('&Formats:')
         self.format_combo = QComboBox()
-
         self.format_label.setBuddy(self.format_combo)
         grid.addWidget(self.format_label, 1, 0)
         grid.addWidget(self.format_combo, 1, 1)
@@ -71,12 +67,6 @@ class DownloadDialog(QDialog):
 
         self.hide_components(True)
 
-        self.url_edit.textEdited.connect(self._show_formats)
-
-        self.__formats = []
-        self.__progress = None
-
-        self.progress_updated.connect(self._update_progress)
 
     @property
     def url(self):
@@ -87,17 +77,18 @@ class DownloadDialog(QDialog):
         self.format_combo.setHidden(hide)
         self.ok_button.setEnabled(not hide)
 
-    def _show_formats(self, text):
+    def show_formats(self, text):
         LOG.debug('Entering show_formats()')
         self.url_edit.setStyleSheet('background: none')
         if not self.url:
             self.hide_components(True)
             return
         try:
-            self.__formats = video_formats(self.url)
+            formats = video_formats(self.url)
             self.format_combo.clear()
-            for fmt in self.__formats:
-                self.format_combo.addItem('{}: {}'.format(fmt.extension, fmt.quality))
+            for fmt in formats:
+                line = '{}: {}'.format(fmt.extension, fmt.quality)
+                self.format_combo.addItem(line, QVariant(fmt))
             self.hide_components(False)
         except (YouTubeDLError, ValueError) as e:
             if isinstance(e, YouTubeDLError):
@@ -105,43 +96,36 @@ class DownloadDialog(QDialog):
             self.url_edit.setStyleSheet('background: #E76666')
             self.hide_components(True)
 
-    def _update_progress(self, n):
-        if self.__progress is None:
-            LOG.error("update_progress() was called when progress doesn't exist")
-            return
-        self.__progress.setValue(n)
-
     def accept(self):
         LOG.debug('Entering accept()')
         idx = self.format_combo.currentIndex()
         if idx == -1:
             return
-        fmt = self.__formats[idx]
+        fmt = self.format_combo.itemData(idx).toPyObject()
         mgr = download(self.url, fmt)
         progress = QProgressDialog('Downloading...', 'Stop', 0, 100, self)
         def on_canceled():
             mgr.terminate()
             thread.wait()
-
         progress.canceled.connect(on_canceled)
         progress.show()
-        self.__progress = progress
 
         dlg = self
-
-        class ProgressThread(QThread):
+        class ProgressUpdater(QThread):
+            progress_updated = pyqtSignal(int)
             def run(self):
                 try:
-                    for i in imap(int, mgr.progress()):
+                    for i in mgr.progress():
                         LOG.debug('%d%%', i)
-                        dlg.progress_updated.emit(i)
+                        self.progress_updated.emit(int(i))
                 except YouTubeDLError as e:
                     QMessageBox.warning(dlg, 'youtube-dl error', e.message)
                 finally:
                     LOG.debug('Closing progress dialog')
                     progress.canceled.emit()
 
-        thread = ProgressThread()
+        thread = ProgressUpdater()
+        thread.progress_updated.connect(progress.setValue)
 
         def on_finished():
             if mgr.path:
