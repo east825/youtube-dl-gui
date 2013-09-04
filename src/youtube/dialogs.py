@@ -4,6 +4,7 @@ from __future__ import unicode_literals
 from __future__ import print_function
 
 import logging
+import os
 
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
@@ -36,6 +37,8 @@ class DownloadDialog(QDialog):
         QDialog.__init__(self, parent)
         self.setWindowTitle('Download Video')
 
+        self.settings = QSettings()
+
         grid = QGridLayout()
 
         url_label = QLabel('&URL:')
@@ -52,8 +55,16 @@ class DownloadDialog(QDialog):
         self.format_label = QLabel('&Formats:')
         self.format_combo = QComboBox()
         self.format_label.setBuddy(self.format_combo)
+
+        self.path_edit = QLineEdit()
+        self.path_label = QLabel('&Path')
+        self.path_label.setBuddy(self.path_edit)
+
         grid.addWidget(self.format_label, 1, 0)
         grid.addWidget(self.format_combo, 1, 1)
+        grid.addWidget(self.path_label, 2, 0)
+        grid.addWidget(self.path_edit, 2, 1)
+
 
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         self.ok_button = buttons.button(QDialogButtonBox.Ok)
@@ -72,10 +83,25 @@ class DownloadDialog(QDialog):
     def url(self):
         return unicode(self.url_edit.text()).strip()
 
+    @property
+    def path(self):
+        return unicode(self.path_edit.text()).strip()
+
     def hide_components(self, hide):
         self.format_label.setHidden(hide)
         self.format_combo.setHidden(hide)
+        self.path_label.setHidden(hide)
+        self.path_edit.setHidden(hide)
         self.ok_button.setEnabled(not hide)
+        if not hide:
+            path = unicode(self.settings.value(
+                'Downloader/NameFormat').toString())
+            dirname = unicode(self.settings.value(
+                'Downloader/DefaultDirectory').toString())
+            if dirname and os.path.exists(dirname):
+                dirname = os.path.abspath(dirname)
+                path = os.path.join(dirname, path)
+            self.path_edit.setText(path)
 
     def show_formats(self, text):
         LOG.debug('Entering show_formats()')
@@ -102,17 +128,21 @@ class DownloadDialog(QDialog):
         if idx == -1:
             return
         fmt = self.format_combo.itemData(idx).toPyObject()
-        mgr = download(self.url, fmt)
+        mgr = download(self.url, fmt, path=self.path)
         progress = QProgressDialog('Downloading...', 'Stop', 0, 100, self)
+
         def on_canceled():
             mgr.terminate()
             thread.wait()
+
         progress.canceled.connect(on_canceled)
         progress.show()
 
         dlg = self
+
         class ProgressUpdater(QThread):
             progress_updated = pyqtSignal(int)
+
             def run(self):
                 try:
                     for i in mgr.progress():
@@ -130,8 +160,9 @@ class DownloadDialog(QDialog):
         def on_finished():
             if mgr.path:
                 self.downloaded.emit(mgr.path)
-            # dispose resources
+                # dispose resources
             thread.deleteLater()
+
         thread.finished.connect(on_finished)
 
         # thread will run in background managing non-modal progress dialog
@@ -139,6 +170,57 @@ class DownloadDialog(QDialog):
         super(DownloadDialog, self).accept()
 
 
+class SettingsDialog(QDialog):
+    def __init__(self, parent=None):
+        QDialog.__init__(self, parent)
+        self.setWindowTitle('Settings')
+        settings = QSettings()
 
+        name_format = settings.value('Downloader/NameFormat', '%(title)s').toString()
+        self.name_format_edit = QLineEdit(name_format)
+        self.name_format_edit.setMinimumWidth(300)
+        self.name_format_edit.setPlaceholderText('File name format')
+        name_format_label = QLabel('Name &format:')
+        name_format_label.setBuddy(self.name_format_edit)
+
+        download_dir = settings.value('Downloader/DefaultDirectory', '.').toString()
+        self.download_dir_edit = QLineEdit(download_dir)
+        self.download_dir_edit.setPlaceholderText('Default download directory')
+        download_dir_label = QLabel('Download &directory:')
+        download_dir_label.setBuddy(self.download_dir_edit)
+        dir_picker_button = QPushButton('...')
+
+        def show_dir_picker():
+            path = QFileDialog.getExistingDirectory(self,
+                                                    'Choose download directory',
+                                                    self.download_dir_edit.text())
+            self.download_dir_edit.setText(path)
+
+
+        dir_picker_button.clicked.connect(show_dir_picker)
+
+        grid = QGridLayout()
+        grid.addWidget(name_format_label, 0, 0)
+        grid.addWidget(self.name_format_edit, 0, 1, 1, 2)
+        grid.addWidget(download_dir_label, 1, 0)
+        grid.addWidget(self.download_dir_edit, 1, 1)
+        grid.addWidget(dir_picker_button)
+
+        button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        button_box.accepted.connect(self.accept)
+        button_box.rejected.connect(self.reject)
+
+        hbox = QVBoxLayout()
+        hbox.addLayout(grid)
+        hbox.addWidget(button_box)
+
+        self.setLayout(hbox)
+
+    def accept(self):
+        # TODO: add settings validation
+        settings = QSettings()
+        settings.setValue('Downloader/NameFormat', self.name_format_edit.text())
+        settings.setValue('Downloader/DefaultDirectory', self.download_dir_edit.text())
+        super(SettingsDialog, self).accept()
 
 

@@ -166,7 +166,7 @@ class DownloadManager(object):
         return gen_progress(p)
 
 
-def download(url, fmt=None):
+def download(url, fmt=None, path=None):
     url = prepare_url(url)
     args = ['youtube-dl', '--newline']
     if fmt is not None:
@@ -174,6 +174,8 @@ def download(url, fmt=None):
             args.extend(['-f', fmt.id])
         else:
             args.extend(['-f', str(fmt)])
+    if path:
+        args.extend(['-o', path])
     args.append(url)
     return DownloadManager(args)
 

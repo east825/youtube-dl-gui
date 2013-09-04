@@ -11,12 +11,13 @@ from __future__ import print_function
 import sys
 import logging
 import argparse
+from PyQt4.QtCore import QSettings
 
 from PyQt4.QtGui import *
 from PyQt4.phonon import Phonon
 
 from player import VideoPlayer, PHONON_STATES
-from dialogs import StringListDialog
+from dialogs import StringListDialog, SettingsDialog
 from util import show_stub_message_box, show_about_dialog
 from youtube.dialogs import DownloadDialog
 
@@ -38,7 +39,7 @@ class MainWindow(QMainWindow):
     def __init__(self, path):
         super(MainWindow, self).__init__()
         self.setWindowIcon(QIcon(':youtube'))
-        self.setWindowTitle('YouTube Player')
+        self.setWindowTitle('youtube-dl-gui')
         self.setMinimumSize(800, 600)
         self.player = VideoPlayer(self)
         # self.player.state_changed.connect(self.update_status)
@@ -121,7 +122,7 @@ class MainWindow(QMainWindow):
         LOG.debug('Exiting download_video()')
 
     def show_settings(self):
-        show_stub_message_box(self)
+        SettingsDialog().exec_()
 
     def show_about(self):
         show_about_dialog(self)
@@ -132,9 +133,12 @@ def main():
     parser = argparse.ArgumentParser(description='Viewer launcher')
     parser.add_argument('path', nargs='?', help='File to play')
     args = parser.parse_args()
+    # don't use window registry by any means
+    QSettings().setDefaultFormat(QSettings.IniFormat)
     app = QApplication(sys.argv)
+    app.setOrganizationName('MyApps')
+    app.setApplicationName('youtube-dl-gui')
     widget = MainWindow(args.path)
-    widget.setWindowTitle('Downloader')
     widget.show()
     sys.exit(app.exec_())
 
