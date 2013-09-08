@@ -54,34 +54,35 @@ class VideoPlayer(QWidget):
         hbox.addWidget(create_button(icon=QIcon(':MD-fast-forward'),
                                      clicked=self.rewind_forward,
                                      shortcut='Ctrl+Right'))
-        hbox.addWidget(create_button(icon=QIcon(':MD-volume-0'),
-                                     checkable=True,
-                                     toggled=self.mute,
-                                     shortcut='Ctrl+M'))
 
         hbox.addStretch()
 
-        volume_icon = QLabel(self)
+        mute_button = create_button(icon=QIcon(':MD-volume-3'),
+                                    checkable=True,
+                                    toggled=self.mute,
+                                    shortcut='Ctrl+M')
+        # hide button borders until mouse pointer hovers it
+        mute_button.setAutoRaise(True)
         audio_output = self.player.audioOutput()
         self.volume_slider = Phonon.VolumeSlider(audio_output, self)
         self.volume_slider.setMuteVisible(False)
 
-        def change_volume_icon(ignored):
+        def set_volume_icon(ignored):
             level = audio_output.volume()
             if audio_output.isMuted() or level == 0:
-                volume_icon.setPixmap(QPixmap(':MD-volume-0-alt'))
+                mute_button.setIcon(QIcon(':MD-volume-0-alt'))
             elif level <= 0.33:
-                volume_icon.setPixmap(QPixmap(':MD-volume-1'))
+                mute_button.setIcon(QIcon(':MD-volume-1'))
             elif level <= 0.66:
-                volume_icon.setPixmap(QPixmap(':MD-volume-2'))
+                mute_button.setIcon(QIcon(':MD-volume-2'))
             else:
-                volume_icon.setPixmap(QPixmap(':MD-volume-3'))
+                mute_button.setIcon(QIcon(':MD-volume-3'))
 
-        change_volume_icon(audio_output.volume())
-        audio_output.volumeChanged.connect(change_volume_icon)
-        audio_output.mutedChanged.connect(change_volume_icon)
+        set_volume_icon(audio_output.volume())
+        audio_output.volumeChanged.connect(set_volume_icon)
+        audio_output.mutedChanged.connect(set_volume_icon)
 
-        hbox.addWidget(volume_icon)
+        hbox.addWidget(mute_button)
         hbox.addWidget(self.volume_slider)
 
         vbox.addLayout(hbox)

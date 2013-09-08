@@ -40,8 +40,8 @@ def show_about_dialog(parent):
 def create_button(text=None, icon=None, clicked=None,
                   checkable=False, toggled=None,
                   shortcut=None, parent=None):
-    """Create QPushButton using specified parameters."""
-    button = QPushButton(parent)
+    """Create QPushButton or QToolButton using specified parameters."""
+    button = QPushButton(parent) if text else QToolButton(parent)
     if text is not None:
         button.setText(text)
     if icon is not None:
