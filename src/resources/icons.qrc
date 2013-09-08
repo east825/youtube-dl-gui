@@ -21,6 +21,7 @@
     <file alias="MD-time-pos-set">icons\MD-time-pos-set.png</file>
     <file alias="MD-time-position">icons\MD-time-position.png</file>
     <file alias="MD-volume-0-alt">icons\MD-volume-0-alt.png</file>
+    <file alias="MD-volume-0">icons\MD-volume-0.png</file>
     <file alias="MD-volume-1">icons\MD-volume-1.png</file>
     <file alias="MD-volume-2">icons\MD-volume-2.png</file>
     <file alias="MD-volume-3">icons\MD-volume-3.png</file>
