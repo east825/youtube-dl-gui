@@ -7,6 +7,7 @@ Program main entry point.
 
 from __future__ import unicode_literals
 from __future__ import print_function
+import os
 
 import sys
 import logging
@@ -17,8 +18,8 @@ from PyQt4.QtGui import *
 from PyQt4.phonon import Phonon
 
 from player import VideoPlayer, PHONON_STATES
-from dialogs import StringListDialog, SettingsDialog
-from util import show_stub_message_box, show_about_dialog
+from dialogs import StringListDialog, SettingsDialog, DEFAULT_DOWNLOAD_DIR
+from util import show_stub_message_box, show_about_dialog, create_action
 from youtube.dialogs import DownloadDialog
 
 # noinspection PyUnresolvedReferences
@@ -46,25 +47,33 @@ class MainWindow(QMainWindow):
         self.player.state_changed.connect(self.update_title)
         self.player.time_changed.connect(self.update_status_bar)
 
-
         self.setCentralWidget(self.player)
 
-        new_file_action = QAction(QIcon(':document-new'), '&New', self)
-        new_file_action.setToolTip('Open existing file')
-        new_file_action.setShortcut(QKeySequence.New)
-        new_file_action.triggered.connect(self.open_new_file)
+        new_file_action = create_action(
+            text='&New',
+            icon=QIcon(':document-new'),
+            tooltip='Open existing file',
+            shortcut=QKeySequence.New,
+            triggered=self.show_new_file_dialog,
+            parent=self)
 
-        download_video_action = QAction(QIcon(':download'), '&Download', self)
-        download_video_action.setToolTip('Download video from YouTube')
-        download_video_action.triggered.connect(self.download_video)
+        download_video_action = create_action(
+            text='&Download',
+            icon=QIcon(':download'),
+            tooltip='Download video from YouTube',
+            shortcut='Ctrl+D',
+            triggered=self.show_download_dialog,
+            parent=self
+        )
 
-        show_setting_action = QAction(QIcon(':settings'), '&Settings', self)
-        show_setting_action.setToolTip('Show setting dialog')
-        show_setting_action.triggered.connect(self.show_settings)
-
-        show_formats_action = QAction('&Show supported formats', self)
-        show_formats_action.setToolTip('Show formats supported by Phonon backend')
-        show_formats_action.triggered.connect(self.show_formats)
+        show_setting_action = create_action(
+            text='&Settings',
+            icon=QIcon(':settings'),
+            tooltip='Show setting dialog',
+            shortcut='Ctrl+Alt+S',
+            triggered=self.show_settings_dialog,
+            parent=self
+        )
 
         main_toolbar = self.addToolBar('MainToolbar')
         main_toolbar.addAction(download_video_action)
@@ -77,7 +86,6 @@ class MainWindow(QMainWindow):
         file_menu.addAction(download_video_action)
 
         settings_menu = self.menuBar().addMenu('&Settings')
-        settings_menu.addAction(show_formats_action)
         settings_menu.addAction(show_setting_action)
 
         about_action = self.menuBar().addAction('&About')
@@ -87,10 +95,14 @@ class MainWindow(QMainWindow):
         if path is not None:
             self.player.play(path)
 
-    def open_new_file(self):
-        globs = ['*' + e for e in self.player.supported_formats()]
-        pardir = self.player.file_dir()
-        path = unicode(QFileDialog.getOpenFileName(self, 'Select video file', pardir,
+    def show_new_file_dialog(self):
+        globs = ['*' + e for e in self.player.supported_extensions()]
+        if self.player.path:
+            directory = os.path.dirname(self.player.path)
+        else:
+            default_dir = QSettings().value('Downloader/DefaultDirectory', DEFAULT_DOWNLOAD_DIR)
+            directory = default_dir.toString()
+        path = unicode(QFileDialog.getOpenFileName(self, 'Select video file', directory,
                                                    'Video files ({})'.format(' '.join(globs))))
         if path:
             logging.debug('File chosen: "%s"', path)
@@ -114,19 +126,17 @@ class MainWindow(QMainWindow):
         elif new_state == Phonon.PausedState:
             self.setWindowTitle('"{}" - Paused'.format(self.player.path))
 
-
-    def download_video(self):
+    def show_download_dialog(self):
         d = DownloadDialog(self)
         d.downloaded.connect(self.player.play)
         d.exec_()
         LOG.debug('Exiting download_video()')
 
-    def show_settings(self):
+    def show_settings_dialog(self):
         SettingsDialog().exec_()
 
     def show_about(self):
         show_about_dialog(self)
-
 
 
 def main():

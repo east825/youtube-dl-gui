@@ -12,6 +12,10 @@ from PyQt4.QtGui import *
 from youtubedl_util import video_formats
 from youtubedl_util import YouTubeDLError, download
 
+DEFAULT_DOWNLOAD_DIR = '.'
+
+DEFAULT_NAME_FORMAT = '%(title)s'
+
 VALID_URL_RE = r'^(https?://)?(www\.)?youtube\.com/watch\?v=\w+.*$'
 
 LOG = logging.getLogger('youtube.dialogs')
@@ -176,14 +180,16 @@ class SettingsDialog(QDialog):
         self.setWindowTitle('Settings')
         settings = QSettings()
 
-        name_format = settings.value('Downloader/NameFormat', '%(title)s').toString()
+        name_format = settings.value('Downloader/NameFormat',
+                                     DEFAULT_NAME_FORMAT).toString()
         self.name_format_edit = QLineEdit(name_format)
         self.name_format_edit.setMinimumWidth(300)
         self.name_format_edit.setPlaceholderText('File name format')
         name_format_label = QLabel('Name &format:')
         name_format_label.setBuddy(self.name_format_edit)
 
-        download_dir = settings.value('Downloader/DefaultDirectory', '.').toString()
+        download_dir = settings.value('Downloader/DefaultDirectory',
+                                      DEFAULT_DOWNLOAD_DIR).toString()
         self.download_dir_edit = QLineEdit(download_dir)
         self.download_dir_edit.setPlaceholderText('Default download directory')
         download_dir_label = QLabel('Download &directory:')
