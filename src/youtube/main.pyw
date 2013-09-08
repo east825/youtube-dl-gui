@@ -18,17 +18,18 @@ from PyQt4.QtGui import *
 from PyQt4.phonon import Phonon
 
 from player import VideoPlayer, PHONON_STATES
-from dialogs import StringListDialog, SettingsDialog, DEFAULT_DOWNLOAD_DIR
-from util import show_stub_message_box, show_about_dialog, create_action
+from util import show_about_dialog, create_action
 from youtube.dialogs import DownloadDialog
 
 # noinspection PyUnresolvedReferences
 import resources.icons
+from youtube.settings import SettingsDialog, get_download_dir
 
 
 __version__ = (0, 1)
 
-logging.basicConfig(level=logging.DEBUG, format='%(levelname)s:%(name)s: %(message)s')
+logging.basicConfig(level=logging.DEBUG,
+                    format='%(levelname)s:%(name)s: %(message)s')
 LOG = logging.getLogger('youtube.launcher')
 LOG.setLevel(logging.DEBUG)
 LOG.propagate = False
@@ -106,20 +107,15 @@ class MainWindow(QMainWindow):
         if self.player.path:
             directory = os.path.dirname(self.player.path)
         else:
-            default_dir = QSettings().value('Downloader/DefaultDirectory', DEFAULT_DOWNLOAD_DIR)
-            directory = default_dir.toString()
-        path = unicode(QFileDialog.getOpenFileName(self, 'Select video file', directory,
-                                                   'Video files ({})'.format(' '.join(globs))))
+            directory = get_download_dir()
+        path = unicode(QFileDialog.getOpenFileName(
+            self, 'Select video file',
+            directory,
+            'Video files ({})'.format(' '.join(globs))
+        ))
         if path:
             logging.debug('File chosen: "%s"', path)
             self.player.play(path)
-
-    def show_formats(self):
-        # QMessageBox.
-        formats = Phonon.BackendCapabilities.availableMimeTypes()
-        dialog = StringListDialog(self, formats)
-        dialog.setWindowTitle('Supported formats')
-        dialog.exec_()
 
     def update_status_bar(self, time, total):
         # TODO: how convert timedelta to time instance for further formatting?
