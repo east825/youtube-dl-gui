@@ -82,6 +82,14 @@ def create_action(text, icon=None, triggered=None,
         action.setToolTip(tooltip)
     return action
 
+def shrinked(button, spacing=15):
+    """Set maximum width of the button to the width of its text plus spacing."""
+    if not button.text():
+        return button
+    font_metrics = button.fontMetrics()
+    text_width = font_metrics.boundingRect(button.text()).width()
+    button.setMaximumWidth(text_width + spacing)
+    return button
 
 
 

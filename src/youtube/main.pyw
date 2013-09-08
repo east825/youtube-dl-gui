@@ -99,6 +99,8 @@ class MainWindow(QMainWindow):
 
         self.menuBar().addMenu('About').addAction(about_action)
 
+        self.statusBar().showMessage('')
+
         if path is not None:
             self.player.play(path)
 

@@ -2,12 +2,16 @@
 
 from __future__ import unicode_literals
 from __future__ import print_function
+import logging
 
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
+from youtube.util import shrinked
 
 DEFAULT_DOWNLOAD_DIR = '.'
 DEFAULT_NAME_FORMAT = '%(title)s'
+
+LOG = logging.getLogger('youtube.settings')
 
 def get_download_dir():
     var = QSettings().value('Downloader/DefaultDirectory', DEFAULT_DOWNLOAD_DIR)
@@ -37,7 +41,8 @@ class SettingsDialog(QDialog):
         self.download_dir_edit.setPlaceholderText('Default download directory')
         download_dir_label = QLabel('Download &directory:')
         download_dir_label.setBuddy(self.download_dir_edit)
-        dir_picker_button = QPushButton('...')
+        dir_picker_button = QToolButton(self)
+        dir_picker_button.setText('…')
 
         def show_dir_picker():
             path = QFileDialog.getExistingDirectory(self,
@@ -53,7 +58,7 @@ class SettingsDialog(QDialog):
         grid.addWidget(self.name_format_edit, 0, 1, 1, 2)
         grid.addWidget(download_dir_label, 1, 0)
         grid.addWidget(self.download_dir_edit, 1, 1)
-        grid.addWidget(dir_picker_button)
+        grid.addWidget(dir_picker_button, 1, 2)
 
         button_box = QDialogButtonBox(
             QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
