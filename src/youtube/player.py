@@ -43,14 +43,14 @@ class VideoPlayer(QWidget):
 
         hbox = QHBoxLayout()
         hbox.addWidget(create_button(icon=QIcon(':MD-fast-backward'),
-                                     clicked=self.rewind_forward,
+                                     clicked=self.rewind_backward,
                                      shortcut='Ctrl+Left'))
         hbox.addWidget(create_button(icon=QIcon(':MD-resume'),
                                      clicked=self.resume,
-                                     shortcut='Ctrl+P'))
+                                     shortcut='Space'))
         hbox.addWidget(create_button(icon=QIcon(':MD-stop'),
                                      clicked=self.stop,
-                                     shortcut='Ctrl+Shift+P'))
+                                     shortcut='Shift+Space'))
         hbox.addWidget(create_button(icon=QIcon(':MD-fast-forward'),
                                      clicked=self.rewind_forward,
                                      shortcut='Ctrl+Right'))
@@ -89,6 +89,19 @@ class VideoPlayer(QWidget):
         self.setLayout(vbox)
 
         self.path = None
+
+    # TODO: find out why simply binding shortcuts to buttons doesn't work
+    def keyPressEvent(self, event):
+        key = event.key()
+        if key == Qt.Key_Space:
+            if event.modifiers() & Qt.ShiftModifier:
+                self.stop()
+            else:
+                self.resume()
+        elif key == Qt.Key_M and event.modifiers() & Qt.ControlModifier:
+            self.mute()
+        QWidget.keyPressEvent(self, event)
+
 
     def resume(self):
         LOG.debug('Play button clicked')
