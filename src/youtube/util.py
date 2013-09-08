@@ -38,15 +38,24 @@ def show_about_dialog(parent):
 
 
 def create_button(text=None, icon=None, clicked=None,
-                  checkable=False, toggled=None,
-                  shortcut=None, parent=None):
-    """Create QPushButton or QToolButton using specified parameters."""
-    button = QPushButton(parent) if text else QToolButton(parent)
+                  checkable=False, toggled=None, shortcut=None,
+                  action=None, parent=None):
+    """Create QPushButton or QToolButton using specified parameters.
+
+    If text parameter is undefined or action parameter is specified
+    QToolButton is created, otherwise - QPushButton.
+    """
+    if text is None or action is not None:
+        button = QToolButton(parent)
+    else:
+        button = QPushButton(parent)
     if text is not None:
         button.setText(text)
     if icon is not None:
         button.setIcon(icon)
     button.setCheckable(checkable)
+    if action is not None:
+        button.setDefaultAction(action)
     if clicked is not None:
         button.clicked.connect(clicked)
     if toggled is not None:
