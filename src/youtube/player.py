@@ -90,17 +90,11 @@ class VideoPlayer(QWidget):
 
         self.path = None
 
-    # TODO: find out why simply binding shortcuts to buttons doesn't work
-    def keyPressEvent(self, event):
-        key = event.key()
-        if key == Qt.Key_Space:
-            if event.modifiers() & Qt.ShiftModifier:
-                self.stop()
-            else:
-                self.resume()
-        elif key == Qt.Key_M and event.modifiers() & Qt.ControlModifier:
-            self.mute()
-        QWidget.keyPressEvent(self, event)
+        QShortcut('Space', self, activated=self.resume)
+        QShortcut('Shift+Space', self, activated=self.stop)
+        QShortcut('Ctrl+M', self, activated=self.mute)
+        QShortcut('Ctrl+Left', self, activated=self.rewind_backward)
+        QShortcut('Ctrl+Right', self, activated=self.rewind_forward)
 
 
     def resume(self):
