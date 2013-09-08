@@ -1,6 +1,7 @@
 <!DOCTYPE RCC>
 <RCC version="1.0">
   <qresource>
+    <file alias="about">icons\about.png</file>
     <file alias="document-new">icons\document-new.png</file>
     <file alias="download">icons\download.png</file>
     <file alias="MD-eject">icons\MD-eject.png</file>

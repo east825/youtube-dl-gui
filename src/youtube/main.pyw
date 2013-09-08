@@ -55,7 +55,8 @@ class MainWindow(QMainWindow):
             tooltip='Open existing file',
             shortcut=QKeySequence.New,
             triggered=self.show_new_file_dialog,
-            parent=self)
+            parent=self
+        )
 
         download_video_action = create_action(
             text='&Download',
@@ -75,6 +76,13 @@ class MainWindow(QMainWindow):
             parent=self
         )
 
+        about_action = create_action(
+            text='&About',
+            icon=QIcon(':about'),
+            triggered=self.show_about,
+            parent=self
+        )
+
         main_toolbar = self.addToolBar('MainToolbar')
         main_toolbar.addAction(download_video_action)
         main_toolbar.addAction(new_file_action)
@@ -88,9 +96,7 @@ class MainWindow(QMainWindow):
         settings_menu = self.menuBar().addMenu('&Settings')
         settings_menu.addAction(show_setting_action)
 
-        about_action = self.menuBar().addAction('&About')
-        about_action.setIcon(QIcon(':about'))
-        about_action.triggered.connect(self.show_about)
+        self.menuBar().addMenu('About').addAction(about_action)
 
         if path is not None:
             self.player.play(path)
