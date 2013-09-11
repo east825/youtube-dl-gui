@@ -32,12 +32,17 @@ def create_qrc_file(subdir):
 
 def main():
     parser = argparse.ArgumentParser()
+    parser.add_argument('-c', '--cwd', action='store_true',
+                        help='change working directory to DIR before generating .qrc file')
     parser.add_argument('dir', nargs='?', default=os.curdir,
                         help='directory containing resources in separate folders')
 
     args = parser.parse_args()
     if not os.path.isdir(args.dir):
         raise Exception('"{}" is not a directory'.format(args.dir))
+
+    if args.cwd:
+        os.chdir(args.dir)
 
     dir_path = os.path.abspath(args.dir)
     for child in os.listdir(dir_path):
