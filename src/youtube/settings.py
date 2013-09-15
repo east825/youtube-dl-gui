@@ -8,6 +8,9 @@ from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 from youtube.util import shrinked
 
+ORGANIZATION_NAME = 'MyApps'
+APPLICATION_NAME = 'youtube-dl-gui'
+
 DEFAULT_DOWNLOAD_DIR = '.'
 DEFAULT_NAME_FORMAT = '%(title)s'
 

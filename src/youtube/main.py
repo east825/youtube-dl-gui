@@ -23,8 +23,7 @@ from youtube.dialogs import DownloadDialog
 
 # noinspection PyUnresolvedReferences
 import resources.icons
-from youtube.settings import SettingsDialog, get_download_dir
-
+from youtube.settings import SettingsDialog, get_download_dir, ORGANIZATION_NAME, APPLICATION_NAME
 
 __version__ = (0, 1)
 
@@ -150,8 +149,8 @@ def main():
     # don't use window registry by any means
     QSettings().setDefaultFormat(QSettings.IniFormat)
     app = QApplication(sys.argv)
-    app.setOrganizationName('MyApps')
-    app.setApplicationName('youtube-dl-gui')
+    app.setOrganizationName(ORGANIZATION_NAME)
+    app.setApplicationName(APPLICATION_NAME)
     widget = MainWindow(args.path)
     widget.show()
     sys.exit(app.exec_())
