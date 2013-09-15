@@ -22,9 +22,16 @@ def get_download_dir():
 
 
 def get_name_format():
-    var = QSettings().value('Downloader/NameFormat', DEFAULT_DOWNLOAD_DIR)
+    var = QSettings().value('Downloader/NameFormat', DEFAULT_NAME_FORMAT)
     return unicode(var.toString())
 
+
+def reset_to_defaults():
+    settings = QSettings()
+    settings.setValue('Downloader/DefaultDirectory', DEFAULT_DOWNLOAD_DIR)
+    settings.setValue('Downloader/NameFormat', DEFAULT_NAME_FORMAT)
+    settings.sync()
+    return settings
 
 
 class SettingsDialog(QDialog):

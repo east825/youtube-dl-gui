@@ -2,6 +2,7 @@
 
 from __future__ import unicode_literals
 from __future__ import print_function
+import subprocess
 import sys
 import site
 
@@ -16,12 +17,14 @@ from urlparse import urlsplit
 import time
 
 import logging
+
 logging.basicConfig(level=logging.DEBUG)
+LOG = logging.getLogger('youtube.installer')
 
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 
-from youtube.settings import ORGANIZATION_NAME, APPLICATION_NAME
+from youtube.settings import ORGANIZATION_NAME, APPLICATION_NAME, reset_to_defaults
 from youtube.util import create_button
 
 import resources.icons
@@ -62,9 +65,13 @@ def remove(path):
         os.remove(path)
 
 
-class StartPage(QWizardPage):
+def show_error_box(parent, message, title='Error'):
+    return QMessageBox.warning(parent, title, message)
+
+
+class InstallStartPage(QWizardPage):
     def __init__(self, parent=None):
-        super(StartPage, self).__init__(parent)
+        super(InstallStartPage, self).__init__(parent)
         self.setTitle('Choose installation directory')
 
         label = QLabel('&Installation directory:')
@@ -99,7 +106,7 @@ class StartPage(QWizardPage):
         self.setLayout(main_layout)
 
     def initializePage(self):
-        super(StartPage, self).initializePage()
+        super(InstallStartPage, self).initializePage()
         self.path_edit.setText(get_default_installation_dir())
 
 
@@ -114,54 +121,12 @@ class StartPage(QWizardPage):
         path = unicode(self.path_edit.text())
         if os.path.exists(path) and not is_empty_dir(path):
             return False
-        return super(StartPage, self).isComplete()
+        return super(InstallStartPage, self).isComplete()
 
 
-class YotubeDLDownloadPage(QWizardPage):
+class InstallProgressPage(QWizardPage):
     def __init__(self, parent=None):
-        super(YotubeDLDownloadPage, self).__init__(parent)
-        self.setTitle('Download youtube-dl')
-        self.setSubTitle(
-            'You can optionally download newest version of youtube-dl if it isn\'t installed yes')
-
-        main_grid = QGridLayout()
-        main_grid.addWidget(QLabel('Download youtube-dl:'), 0, 0)
-        download_checkbox = QCheckBox()
-        left_aligned = QHBoxLayout()
-        left_aligned.addWidget(download_checkbox)
-        left_aligned.addStretch(1)
-        main_grid.addLayout(left_aligned, 0, 1)
-        main_grid.addItem(QSpacerItem(0, 20), 1, 0)
-
-        extension = QWidget()
-        ext_grid = QGridLayout()
-        self.progress = QProgressBar(self)
-        download_button = create_button(
-            text='Download',
-            clicked=self.download,
-        )
-        ext_grid.addWidget(download_button, 0, 0)
-        ext_grid.addWidget(self.progress, 0, 1)
-        extension.setLayout(ext_grid)
-
-        main_grid.addWidget(extension, 2, 0, 1, 2)
-        self.setLayout(main_grid)
-
-        download_checkbox.toggled.connect(extension.setVisible)
-        extension.hide()
-
-    def download(self):
-        install_dir = unicode(self.field('InstallationDirectory').toString())
-        for i in range(100):
-            QApplication.processEvents(QEventLoop.AllEvents, 100)
-            time.sleep(0.1)
-            self.progress.setValue(i + 1)
-        self.wizard().next()
-
-
-class ProgressPage(QWizardPage):
-    def __init__(self, parent=None):
-        super(ProgressPage, self).__init__(parent)
+        super(InstallProgressPage, self).__init__(parent)
         vbox = QVBoxLayout()
         self.info = QLabel()
         vbox.addWidget(self.info)
@@ -169,9 +134,6 @@ class ProgressPage(QWizardPage):
         vbox.addWidget(self.progress)
         vbox.addStretch()
         self.setLayout(vbox)
-
-    def show_error_box(self, msg):
-        return QMessageBox.warning(self, 'Error', msg)
 
     def initializePage(self):
         QTimer.singleShot(0, self.install)
@@ -183,7 +145,7 @@ class ProgressPage(QWizardPage):
             if not os.path.exists(dest):
                 os.makedirs(dest)
             shutil.copytree(YOUTUBE_PKG_PATH, os.path.join(dest, 'youtube'),
-                            ignore=shutil.ignore_patterns('*.py[co]'))
+                            ignore=shutil.ignore_patterns('*.pyc', '*.pyo'))
             pth_file = os.path.join(site.getsitepackages()[-1], 'youtube-dl-gui.pth')
             with open(pth_file, 'w') as fd:
                 fd.write(dest.encode('utf-8'))
@@ -200,9 +162,7 @@ class ProgressPage(QWizardPage):
             try:
                 os.mkdir(exec_dir)
             except OSError as e:
-                self.show_error_box(
-                    "Can't create directory '{}' ({})".format(exec_dir,
-                                                              e.strerror))
+                show_error_box(self,"Can't create directory '{}' ({})".format(exec_dir,e.strerror))
                 return
             try:
                 r = urllib2.urlopen(YOUTUBE_DL_DOWNLOAD_URL)
@@ -219,18 +179,18 @@ class ProgressPage(QWizardPage):
                         step = int((float(read) / total) * 50) + 50
                         self.progress.setValue(step)
             except URLError as e:
-                msg = 'Can\'t download youtube-dl executable ({})'.format(
-                    e.reason)
+                msg = 'Can\'t download youtube-dl executable ({})'.format(e.reason)
                 self.show_error_box(msg)
         self.wizard().next()
 
 
-class FinalPage(QWizardPage):
+class InstallFinalPage(QWizardPage):
     def __init__(self, parent=None):
-        super(FinalPage, self).__init__(parent)
+        super(InstallFinalPage, self).__init__(parent)
         self.setTitle('Installation completed')
         self.setSubTitle('Thank you for installing {}'.format(APPLICATION_NAME))
         self.launch_check = QCheckBox()
+        self.launch_check.setChecked(True)
         self.registerField('LaunchApplication', self.launch_check)
         # self.readme_check = QCheckBox()
         form = QFormLayout()
@@ -239,27 +199,94 @@ class FinalPage(QWizardPage):
         self.setLayout(form)
 
 
+class UninstallProgressPage(QWizardPage):
+    def __init__(self, parent=None):
+        super(UninstallProgressPage, self).__init__(parent)
+        self.setTitle('Uninstall {}'.format(APPLICATION_NAME))
+        self.info = QLabel()
+        self.progress = QProgressBar()
+        vbox = QVBoxLayout()
+        vbox.addWidget(self.info)
+        vbox.addWidget(self.progress)
+        vbox.addStretch()
+        self.setLayout(vbox)
+        self.complete = False
+
+    def initializePage(self):
+        QTimer.singleShot(0, self.uninstall)
+
+    def uninstall(self):
+        settings = QSettings()
+        app_dir = unicode(settings.value('InstallationDirectory').toString())
+        settings_file = unicode(settings.fileName())
+        pth_file = os.path.join(site.getsitepackages()[-1], 'youtube-dl-gui.pth')
+        targets = {
+            'program directory': app_dir,
+            'settings': settings_file,
+            '*.pth file': pth_file
+        }
+        for i, resource in enumerate(targets.items()):
+            name, path = resource
+            if not os.path.exists(path):
+                continue
+            self.info.setText('Deleting {}...'.format(name))
+            try:
+                QApplication.instance().processEvents(QEventLoop.AllEvents, 100)
+                remove(path)
+                time.sleep(1)
+                LOG.debug("'%s' removed successfully", path)
+            except OSError as e:
+                show_error_box("Can't delete '{}' ({})".format(path, e.strerror))
+            self.progress.setValue((i + 1.0) / len(targets) * 100)
+        self.complete = True
+        self.completeChanged.emit()
+        self.info.setText('Program uninstalled successfully')
+
+    def isComplete(self):
+        if not self.complete:
+            return False
+        return super(UninstallProgressPage, self).isComplete()
+        # self.wizard().next()
+
+
+
+class InstallWizard(QWizard):
+    def __init__(self):
+        super(InstallWizard, self).__init__()
+        if not os.path.exists(YOUTUBE_PKG_PATH):
+            show_error_box(self,
+                           'Installer should be started from directory containing "youtube" package')
+            # TODO: how terminate application correctly?
+            QApplication.instance().exit(1)
+        self.setWindowTitle('{} installation'.format(APPLICATION_NAME))
+        self.addPage(InstallStartPage())
+        self.addPage(InstallProgressPage())
+        self.addPage(InstallFinalPage())
+
+    def accept(self):
+        app_dir = unicode(self.field('InstallationDirectory').toString())
+        settings = QSettings()
+        settings.setValue('InstallationDirectory', app_dir)
+        reset_to_defaults()
+        if self.field('LaunchApplication').toBool():
+            subprocess.Popen(['python', os.path.join(app_dir, 'youtube', 'main.py')])
+        return super(InstallWizard, self).accept()
+
+
 def main():
     app = QApplication(sys.argv)
     app.setOrganizationName(ORGANIZATION_NAME)
     app.setApplicationName(APPLICATION_NAME)
-    wizard = QWizard()
-    wizard.setWindowTitle('{} installation'.format(APPLICATION_NAME))
-    # wizard.setPixmap(QWizard.LogoPixmap, QPixmap(':youtube'))
-    wizard.addPage(StartPage())
-    wizard.addPage(ProgressPage())
-    # wizard.addPage(YotubeDLDownloadPage())
-    wizard.addPage(FinalPage())
-    wizard.show()
-    if not os.path.exists(YOUTUBE_PKG_PATH):
-        QMessageBox.warning(
-            wizard,
-            'Error',
-            'Installer should be started from directory containing "youtube" package'
-        )
-        app.exit(1)
+    QSettings().setDefaultFormat(QSettings.IniFormat)
+    install_dir = unicode(QSettings().value('InstallationDirectory').toString())
+    if os.path.exists(install_dir):
+        wizard = QWizard()
+        wizard.setWindowTitle('{} removal'.format(APPLICATION_NAME))
+        wizard.addPage(UninstallProgressPage())
     else:
-        sys.exit(app.exec_())
+        wizard = InstallWizard()
+    wizard.show()
+    sys.exit(app.exec_())
 
 
 if __name__ == '__main__':
