@@ -3,6 +3,7 @@
 from __future__ import unicode_literals
 from __future__ import print_function
 import logging
+import os
 
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
@@ -15,6 +16,7 @@ DEFAULT_DOWNLOAD_DIR = '.'
 DEFAULT_NAME_FORMAT = '%(title)s'
 
 LOG = logging.getLogger('youtube.settings')
+PKG_PATH = os.path.dirname(__file__)
 
 def get_download_dir():
     var = QSettings().value('Downloader/DefaultDirectory', DEFAULT_DOWNLOAD_DIR)
@@ -23,6 +25,11 @@ def get_download_dir():
 
 def get_name_format():
     var = QSettings().value('Downloader/NameFormat', DEFAULT_NAME_FORMAT)
+    return unicode(var.toString())
+
+
+def get_installation_directory():
+    var = QSettings().value('InstallationDirectory', os.path.dirname(PKG_PATH))
     return unicode(var.toString())
 
 

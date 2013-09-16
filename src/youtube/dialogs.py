@@ -94,17 +94,14 @@ class DownloadDialog(QDialog):
         self.path_edit.setHidden(hide)
         self.ok_button.setEnabled(not hide)
         if not hide:
-            path = unicode(self.settings.value(
-                'Downloader/NameFormat').toString())
-            dirname = unicode(self.settings.value(
-                'Downloader/DefaultDirectory').toString())
+            path = unicode(self.settings.value('Downloader/NameFormat').toString())
+            dirname = unicode(self.settings.value('Downloader/DefaultDirectory').toString())
             if dirname and os.path.exists(dirname):
                 dirname = os.path.abspath(dirname)
                 path = os.path.join(dirname, path)
             self.path_edit.setText(path)
 
     def show_formats(self, text):
-        LOG.debug('Entering show_formats()')
         self.url_edit.setStyleSheet('background: none')
         if not self.url:
             self.hide_components(True)
@@ -123,7 +120,6 @@ class DownloadDialog(QDialog):
             self.hide_components(True)
 
     def accept(self):
-        LOG.debug('Entering accept()')
         idx = self.format_combo.currentIndex()
         if idx == -1:
             return
@@ -146,7 +142,6 @@ class DownloadDialog(QDialog):
             def run(self):
                 try:
                     for i in mgr.progress():
-                        LOG.debug('%d%%', i)
                         self.progress_updated.emit(int(i))
                 except YouTubeDLError as e:
                     QMessageBox.warning(dlg, 'youtube-dl error', e.message)

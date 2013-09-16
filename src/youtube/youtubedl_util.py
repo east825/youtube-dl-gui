@@ -14,6 +14,7 @@ from collections import namedtuple
 import logging
 from urllib import urlencode
 from urlparse import parse_qs, urlunparse, urljoin, urlunsplit, urlsplit
+from youtube.settings import get_installation_directory
 
 CONSOLE_ENCODING = 'cp1251' if platform.system() == 'Windows' else sys.stdout.encoding
 
@@ -168,7 +169,14 @@ class DownloadManager(object):
 
 def download(url, fmt=None, path=None):
     url = prepare_url(url)
-    args = ['youtube-dl', '--newline']
+    binary = os.path.join(get_installation_directory(), 'bin', 'youtube-dl')
+    # search in path if doesn't exist
+    if not os.path.exists(binary):
+        LOG.debug('Using system-wide youtube-dl (if any)')
+        binary = 'youtube-dl'
+    else:
+        LOG.debug('Using downloaded youtube-dl at "%s"', binary)
+    args = [binary, '--newline']
     if fmt is not None:
         if isinstance(fmt, VideoFormat):
             args.extend(['-f', fmt.id])
