@@ -167,7 +167,7 @@ class InstallProgressPage(QWizardPage):
             reset_to_defaults()
             debug_delay(1)
         except OSError as e:
-            self.show_error_box("Can't copy application files ({})".format(e.strerror))
+            show_error_box(self, "Can't copy application files ({})".format(e.strerror))
             QApplication.instance().exit(2)
 
         if self.field('DownloadYouTubeDL').toBool():
@@ -269,10 +269,10 @@ class InstallWizard(QWizard):
     def __init__(self):
         super(InstallWizard, self).__init__()
         if not os.path.exists(YOUTUBE_PKG_PATH):
-            show_error_box(self,
-                           'Installer should be started from directory containing "youtube" package')
-            # TODO: how terminate application correctly?
-            QApplication.instance().exit(1)
+            show_error_box(self,'Installer should be started from directory containing "youtube" package')
+            # alternative way to close application
+            # QTimer.singleShot(0, lambda: self.done(2))
+            QTimer.singleShot(0, lambda: QApplication.instance().exit(1))
         self.setWindowTitle('{} installation'.format(APPLICATION_NAME))
         self.addPage(InstallStartPage())
         self.addPage(InstallProgressPage())
