@@ -25,7 +25,6 @@ from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 
 from youtube.settings import ORGANIZATION_NAME, APPLICATION_NAME, reset_to_defaults
-from youtube.util import create_button
 
 import resources.icons
 
@@ -34,9 +33,9 @@ YOUTUBE_PKG_PATH = os.path.join(os.path.dirname(__file__), 'youtube')
 ON_WINDOWS = platform.system() == 'Windows'
 
 if ON_WINDOWS:
-    YOUTUBE_DL_DOWNLOAD_URL = 'https://yt-dl.org/downloads/2013.11.09/youtube-dl.exe'
+    YOUTUBE_DL_DOWNLOAD_URL = 'https://yt-dl.org/downloads/2013.09.16/youtube-dl.exe'
 else:
-    YOUTUBE_DL_DOWNLOAD_URL = 'https://yt-dl.org/downloads/2013.11.09/youtube-dl'
+    YOUTUBE_DL_DOWNLOAD_URL = 'https://yt-dl.org/downloads/2013.09.16/youtube-dl'
 
 
 def get_default_installation_dir():
@@ -68,6 +67,10 @@ def remove(path):
 def show_error_box(parent, message, title='Error'):
     return QMessageBox.warning(parent, title, message)
 
+
+def debug_delay(seconds):
+    if __debug__:
+        time.sleep(seconds)
 
 class InstallStartPage(QWizardPage):
     def __init__(self, parent=None):
@@ -138,26 +141,38 @@ class InstallProgressPage(QWizardPage):
     def initializePage(self):
         QTimer.singleShot(0, self.install)
 
+    def update_progress_info(self, msg, value):
+        self.info.setText(msg)
+        self.progress.setValue(value)
+
     def install(self):
         dest = unicode(self.field('InstallationDirectory').toString())
-        self.info.setText('Copying application files...')
         try:
+            self.update_progress_info('Copying application files...', 0)
             if not os.path.exists(dest):
                 os.makedirs(dest)
             shutil.copytree(YOUTUBE_PKG_PATH, os.path.join(dest, 'youtube'),
                             ignore=shutil.ignore_patterns('*.pyc', '*.pyo'))
+            debug_delay(1)
+
+            self.update_progress_info('Creating *.pth file...', 20)
             pth_file = os.path.join(site.getsitepackages()[-1], 'youtube-dl-gui.pth')
             with open(pth_file, 'w') as fd:
                 fd.write(dest.encode('utf-8'))
+            debug_delay(1)
+
+            self.update_progress_info('Saving default settings...', 35)
+            settings = QSettings()
+            settings.setValue('InstallationDirectory', dest)
+            reset_to_defaults()
+            debug_delay(1)
         except OSError as e:
-            self.show_error_box(
-                "Can't copy application files ({})".format(e.strerror))
+            self.show_error_box("Can't copy application files ({})".format(e.strerror))
             QApplication.instance().exit(2)
 
-        # TODO: think about something more meaningful
-        self.progress.setValue(50)
         if self.field('DownloadYouTubeDL').toBool():
-            self.info.setText('Downloading youtube-dl...')
+            # TODO: think about something more meaningful
+            self.update_progress_info('Downloading youtube-dl...', 50)
             exec_dir = os.path.join(dest, 'bin')
             try:
                 os.mkdir(exec_dir)
@@ -166,11 +181,9 @@ class InstallProgressPage(QWizardPage):
                 return
             try:
                 r = urllib2.urlopen(YOUTUBE_DL_DOWNLOAD_URL)
-                file_name = os.path.basename(
-                    urlsplit(YOUTUBE_DL_DOWNLOAD_URL).path)
                 total = int(r.headers['Content-Length'])
                 read = 0
-                with open(os.path.join(exec_dir, file_name), 'wb') as fd:
+                with open(os.path.join(exec_dir, 'youtube-dl'), 'wb') as fd:
                     while read < total:
                         QApplication.processEvents(QEventLoop.AllEvents, 100)
                         block = r.read(4096)
@@ -178,9 +191,12 @@ class InstallProgressPage(QWizardPage):
                         fd.write(block)
                         step = int((float(read) / total) * 50) + 50
                         self.progress.setValue(step)
+                        debug_delay(0.01)
             except URLError as e:
                 msg = 'Can\'t download youtube-dl executable ({})'.format(e.reason)
-                self.show_error_box(msg)
+                show_error_box(self, msg)
+        else:
+            self.update_progress_info('Installation completed', 100)
         self.wizard().next()
 
 
@@ -220,12 +236,12 @@ class UninstallProgressPage(QWizardPage):
         app_dir = unicode(settings.value('InstallationDirectory').toString())
         settings_file = unicode(settings.fileName())
         pth_file = os.path.join(site.getsitepackages()[-1], 'youtube-dl-gui.pth')
-        targets = {
-            'program directory': app_dir,
-            'settings': settings_file,
-            '*.pth file': pth_file
-        }
-        for i, resource in enumerate(targets.items()):
+        targets = [
+            ('program directory', app_dir),
+            ('settings', settings_file),
+            ('*.pth file', pth_file),
+        ]
+        for i, resource in enumerate(targets):
             name, path = resource
             if not os.path.exists(path):
                 continue
@@ -233,12 +249,13 @@ class UninstallProgressPage(QWizardPage):
             try:
                 QApplication.instance().processEvents(QEventLoop.AllEvents, 100)
                 remove(path)
-                time.sleep(1)
+                debug_delay(1)
                 LOG.debug("'%s' removed successfully", path)
             except OSError as e:
                 show_error_box("Can't delete '{}' ({})".format(path, e.strerror))
             self.progress.setValue((i + 1.0) / len(targets) * 100)
         self.complete = True
+        # made 'Finish' button visible
         self.completeChanged.emit()
         self.info.setText('Program uninstalled successfully')
 
@@ -246,8 +263,6 @@ class UninstallProgressPage(QWizardPage):
         if not self.complete:
             return False
         return super(UninstallProgressPage, self).isComplete()
-        # self.wizard().next()
-
 
 
 class InstallWizard(QWizard):
@@ -265,9 +280,6 @@ class InstallWizard(QWizard):
 
     def accept(self):
         app_dir = unicode(self.field('InstallationDirectory').toString())
-        settings = QSettings()
-        settings.setValue('InstallationDirectory', app_dir)
-        reset_to_defaults()
         if self.field('LaunchApplication').toBool():
             subprocess.Popen(['python', os.path.join(app_dir, 'youtube', 'main.py')])
         return super(InstallWizard, self).accept()
