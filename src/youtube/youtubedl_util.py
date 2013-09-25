@@ -188,14 +188,4 @@ def download(url, fmt=None, path=None):
     return DownloadManager(args)
 
 
-if __name__ == '__main__':
-    import sys
-
-    print('Available: ', check_available())
-    # pprint(video_formats(sys.argv[1]))
-    # for p, size in download(sys.argv[1], 5, progress=True):
-    #     n = int(80 * (p / 100))
-    #     print('\r{}{} {}'.format('#' * n, ' ' * (80 - n), size), end='')
-
-
 

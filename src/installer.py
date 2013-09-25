@@ -26,8 +26,8 @@ from PyQt4.QtGui import *
 
 from youtube.settings import ORGANIZATION_NAME, APPLICATION_NAME, reset_to_defaults
 
+# noinspection PyUnresolvedReferences
 import resources.icons
-
 
 YOUTUBE_PKG_PATH = os.path.join(os.path.dirname(__file__), 'youtube')
 ON_WINDOWS = platform.system() == 'Windows'

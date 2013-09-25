@@ -8,6 +8,7 @@ import os
 
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
+from youtube import settings
 
 from youtubedl_util import video_formats
 from youtubedl_util import YouTubeDLError, download
@@ -94,8 +95,8 @@ class DownloadDialog(QDialog):
         self.path_edit.setHidden(hide)
         self.ok_button.setEnabled(not hide)
         if not hide:
-            path = unicode(self.settings.value('Downloader/NameFormat').toString())
-            dirname = unicode(self.settings.value('Downloader/DefaultDirectory').toString())
+            path = settings.get_name_format()
+            dirname = settings.get_download_dir()
             if dirname and os.path.exists(dirname):
                 dirname = os.path.abspath(dirname)
                 path = os.path.join(dirname, path)
@@ -155,7 +156,7 @@ class DownloadDialog(QDialog):
         def on_finished():
             if mgr.path:
                 self.downloaded.emit(mgr.path)
-                # dispose resources
+            # dispose resources
             thread.deleteLater()
 
         thread.finished.connect(on_finished)

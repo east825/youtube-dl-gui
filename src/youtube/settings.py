@@ -77,8 +77,7 @@ class SettingsDialog(QDialog):
         grid.addWidget(self.download_dir_edit, 1, 1)
         grid.addWidget(dir_picker_button, 1, 2)
 
-        button_box = QDialogButtonBox(
-            QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         button_box.accepted.connect(self.accept)
         button_box.rejected.connect(self.reject)
 

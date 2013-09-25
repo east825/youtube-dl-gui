@@ -13,6 +13,10 @@ from PyQt4.QtGui import *
 from PyQt4.phonon import Phonon
 from youtube.util import create_button, create_action
 
+
+# noinspection PyUnresolvedReferences
+import resources.icons
+
 LOG = logging.getLogger('youtube.player')
 
 PHONON_STATES = {
